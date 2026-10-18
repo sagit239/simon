@@ -15,7 +15,7 @@
 | צליל | Web Audio API | יצירת ארבעה צלילים מקומית, ללא קובצי אודיו חיצוניים |
 | מצב המשחק | אובייקט TypeScript יחיד בזיכרון | מקור האמת למצב, שלב, רצף וניקוד |
 | בדיקות לוגיקה | Vitest | בדיקת כללי המשחק, תזמונים וביטול פעולות |
-| בדיקות דפדפן | Playwright | בדיקת זרימות, מובייל ו-Offline על Build אמיתי |
+| בדיקות דפדפן | Playwright (Chromium במצב מובייל) | בדיקת הזרימות המרכזיות ו-Offline על Build אמיתי |
 | קוד מקור | Git ו-GitHub | Repository אחד לקוד, הגדרות ו-lockfile |
 | CI/CD ו-Hosting | GitHub Actions ו-GitHub Pages | בדיקות, Build ופריסה אוטומטית כאתר סטטי ב-HTTPS |
 
@@ -29,7 +29,7 @@
 
 **אודיו:** נבחנו Web Audio API, רכיבי HTML Audio ו-Howler.js. נבחר Web Audio API משום שנדרשים ארבעה צלילים סינתטיים קצרים, עם שליטה במשך הצליל ועצירה מיידית. אין צורך בהורדת קבצים או בתלות נוספת לניהול מדיה. [Web Audio: Best practices](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Best_practices), [HTML Audio](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/audio), [Howler.js](https://howlerjs.com/).
 
-**בדיקות:** נבחנו Vitest מול Jest, ו-Playwright מול Cypress. נבחר Vitest לשיתוף סביבת Vite ול-Fake Timers, ו-Playwright לאוטומציה של מגע, Viewport וזרימות בדפדפנים. כלי הבדיקה הם Development Dependencies בלבד. [Vitest Timers](https://vitest.dev/guide/mocking/timers), [Jest Timer Mocks](https://jestjs.io/docs/timer-mocks), [Playwright Emulation](https://playwright.dev/docs/emulation), [Cypress Cross Browser](https://docs.cypress.io/app/guides/cross-browser-testing).
+**בדיקות:** נבחנו Vitest מול Jest, ו-Playwright מול Cypress. נבחר Vitest לשיתוף סביבת Vite ול-Fake Timers, ו-Playwright לאוטומציה של מגע, Viewport וזרימות. בהתאם להיקף המוצר, בדיקות Playwright רצות ב-Chromium בלבד באמולציית מובייל ומכסות את הזרימות המרכזיות; התאמה ל-Safari נבדקת ידנית ב-iPhone אמיתי. כלי הבדיקה הם Development Dependencies בלבד. [Vitest Timers](https://vitest.dev/guide/mocking/timers), [Jest Timer Mocks](https://jestjs.io/docs/timer-mocks), [Playwright Emulation](https://playwright.dev/docs/emulation), [Cypress Cross Browser](https://docs.cypress.io/app/guides/cross-browser-testing).
 
 **Hosting:** נבחנו GitHub Pages ו-Vercel. נבחר GitHub Pages בהתאם להעדפת הפריסה ולתוצר סטטי לחלוטין. אין צורך בשירות Runtime בתשלום, בחשבון Cloud נוסף או ב-Serverless Functions. Vite מתעד את הפריסה באמצעות GitHub Actions ואת התאמת נתיב הבסיס ל-Project Site. [Vite: Static Deploy](https://vite.dev/guide/static-deploy.html), [Vercel: Git integration](https://vercel.com/docs/git).
 
@@ -112,7 +112,8 @@ Node.js פועל בפיתוח וב-CI בלבד. לוגיקת המשחק, הגר�
 | `accepting` + השלמת שלב 10 | ניקוד 10, ביטול Playback ומעבר ל-`won` |
 | `accepting` + צבע שגוי | מעבר מיידי ל-`lost`, ללא תוספת ניקוד |
 | משחק פעיל + מעבר לאודות | ביטול Playback, איפוס תשובה חלקית ומעבר ל-`paused` |
-| `paused` + חזרה לבית | הצגת אותו רצף מחדש מבלי להגריל או לשנות ניקוד |
+| משחק פעיל + הדף מוסתר (נעילה/רקע) | ביטול Playback, איפוס תשובה חלקית ומעבר ל-`paused`; המסך נשאר הבית |
+| `paused` + חזרה לבית מאודות, או ״המשך״ בבית | הצגת אותו רצף מחדש מבלי להגריל או לשנות ניקוד |
 | `won / lost` + ״משחק חדש״ | ביטול משאבים, איפוס מלא והתחלת רצף חדש של שלב 1 |
 
 ההגרלה היא `Math.floor(Math.random() * 4)` לכל פריט בנפרד; אין צורך באקראיות קריפטוגרפית. מותרות חזרות, ואף רצף זהה בין שלבים או משחקים במקרה. אין להתערב בתוצאה כדי לכפות גיוון. אירוע צבע בכל מצב שאינו `accepting` נדחה ללא השפעה. הפעולה העסקית מתבצעת סינכרונית לפני המתנה למשוב, כדי למנוע ניקוד כפול בלחיצות מהירות.
@@ -121,7 +122,7 @@ Node.js פועל בפיתוח וב-CI בלבד. לוגיקת המשחק, הגר�
 
 - לכל פריט ברצף: הארה וצליל במשך 500 מילישניות. בין פריטים בלבד יש הפסקה של 250 מילישניות. לאחר כיבוי הפריט האחרון נפתח הקלט. אין Timeout לתשובה.
 - ארבעה תדרים קבועים שונים יוגדרו במפת צבעים אחת, המשמשת גם את הצגת הרצף וגם את משוב הלחיצה. התדרים עצמם הם פרט מימוש, ללא משמעות עסקית.
-- יצירת או חידוש `AudioContext` מתבצעים בתוך מחוות משתמש: ״התחל״, ״משחק חדש״ או חזרה מאודות. אין להסתמך על Autoplay בעת טעינת האתר. [MDN: Autoplay](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay).
+- יצירת או חידוש `AudioContext` מתבצעים בתוך מחוות משתמש: ״התחל״, ״משחק חדש״, ״המשך״ או חזרה מאודות. אין להסתמך על Autoplay בעת טעינת האתר. [MDN: Autoplay](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay).
 - Playback מפעיל כל פריט לפי שעון מונוטוני ומבצע סנכרון חזותי לצליל. אין להתחיל מראש רצף שלם של צלילים שלא ניתן לבטל. סטיות קלות עקב תזמון הדפדפן אפשריות; אין הבטחת דיוק של מערכת Real-time.
 - בעת השהיה, סיום או התחלה חדשה: לבטל טיימרים, לעצור Oscillators פעילים, לכבות הארות ולהגדיל `playbackRunId`. כל Callback בודק שמזהה הריצה והמצב עדיין תואמים לפני עדכון.
 - משוב הלחיצה אינו חוסם לחיצות תקינות מהירות; המשוב הקודם נקטע לפי הצורך. השלמת שלב מפעילה את הרצף הבא רק לאחר סיום המשוב הקצר, כשהקלט כבר חסום.
@@ -131,7 +132,7 @@ Node.js פועל בפיתוח וב-CI בלבד. לוגיקת המשחק, הגר�
 
 דפדפנים עשויים להאט טיימרים ולהשהות אודיו כאשר האתר ברקע. יש לבטל Playback עם `visibilitychange` כאשר הדף מוסתר, ולהימנע משחזור Callbacks שהצטברו. [MDN: Page Visibility](https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API).
 
-**הנחת מימוש למקרה שלא פורט ב-PRD:** אם משחק פעיל הופרע על ידי נעילת המכשיר או מעבר לאפליקציה אחרת, הוא יעבור למצב ההשהיה הקיים במסך אודות. חזרה לבית במחוות משתמש תציג שוב את אותו רצף ותאפשר חידוש אודיו. אין מסך חדש, שינוי ניקוד או ענישה. בעת `pageshow` לאחר שחזור מ-Back/Forward Cache יש להחיל אותה בדיקת השהיה; טעינה חדשה מלאה תמיד מאפסת את המשחק. סגירת התהליך על ידי מערכת ההפעלה עלולה לאבד מצב בזיכרון, בהתאם לאיסור על שמירת משחקים.
+לפי ה-PRD, הפרעה למשחק פעיל (נעילת המכשיר או מעבר לאפליקציה אחרת) מעבירה אותו למצב `paused` והמסך נשאר הבית. בבית מוצג ״המשך״ במקום ״התחל״; הלחיצה עליו היא מחוות המשתמש שמחדשת את האודיו ומציגה שוב את אותו רצף. אין שינוי ניקוד או ענישה. אם המשתמש נמצא באודות בזמן ההפרעה, המשחק כבר מושהה ואין שינוי. טעינה חדשה מלאה תמיד מאפסת את המשחק. סגירת התהליך על ידי מערכת ההפעלה עלולה לאבד מצב בזיכרון, בהתאם לאיסור על שמירת משחקים.
 
 ### 2.8 PWA ופעולה ללא רשת
 
@@ -143,7 +144,7 @@ Node.js פועל בפיתוח וב-CI בלבד. לוגיקת המשחק, הגר�
 
 **מוכנות:** הצגת האתר בפעם הראשונה אינה מוכיחה שכל המשאבים כבר נשמרו. Offline זמין רק לאחר הצלחת התקנת ה-Worker וה-Precache. כשל בהתקנת Cache לא יחסום משחק שכבר נטען; האפליקציה לא תסמן אותו כמוכן ל-Offline. טעינה ראשונה ללא רשת או לאחר מחיקת Cache אינה מובטחת. בדיקת מוכנות מתבססת על מחזור החיים של ה-Worker, לא על `navigator.onLine` בלבד. [MDN: PWA Caching](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Caching).
 
-**עדכון גרסאות:** `registerType: 'prompt'`, עם `skipWaiting: false` ו-`clientsClaim: false`. לא לקרוא לעדכון כפוי או לרענון אוטומטי. Worker חדש ימתין לפי מחזור החיים הרגיל עד סגירת כל הלקוחות שבשליטת הגרסה הישנה; בפתיחה הבאה ניתן יהיה לקבל את הגרסה החדשה. אין צורך להציג Dialog עדכון. ניקוי Caches ישנים יוגבל ל-Caches של יישום זה, עם Prefix ייחודי לפרויקט, ולא ימחוק Caches של אתרי Pages אחרים באותו Origin. כך עדכון אינו מוחק משחק פעיל. [Vite PWA: Update behavior](https://vite-pwa-org.netlify.app/guide/prompt-for-update).
+**עדכון גרסאות:** גרסה חדשה לא תרענן משחק פעיל. ה-Worker החדש ימתין לפי מחזור החיים הרגיל, והגרסה החדשה תתקבל בפתיחה הבאה של האתר. אין Dialog עדכון. (מימוש: `registerType: 'prompt'` בלי לקרוא לעדכון; זו התנהגות ברירת המחדל של Workbox.) ה-Caches יקבלו Prefix ייחודי לפרויקט. [Vite PWA: Update behavior](https://vite-pwa-org.netlify.app/guide/prompt-for-update).
 
 ### 2.9 APIs ו-Data Flow
 
@@ -157,16 +158,16 @@ Node.js פועל בפיתוח וב-CI בלבד. לוגיקת המשחק, הגר�
 - להפעיל HTTPS ב-GitHub Pages; זה גם תנאי להפעלת PWA בסביבת Production.
 - אין Analytics, Cookies יישומיים או שליחת תוצאות. GitHub עצמו מתעד כתובות IP לצורכי אבטחה ברמת ה-Hosting. [GitHub Pages: Data collection](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages).
 - להשתמש ב-`textContent` לטקסטים ובערכי צבע מוגדרים, ללא הכנסת HTML ממקורות חיצוניים. אין טעינת Scripts בזמן Runtime ממקור צד שלישי.
-- ה-Repository כולל lockfile; Workflow משתמש בהרשאות מינימליות וב-Actions המקובעים ל-Commit SHA מאומת. אין Secrets ב-Repository ואין צורך ב-Personal Access Token לפריסת Pages באמצעות ההרשאות המובנות.
+- ה-Repository כולל lockfile; Workflow משתמש בהרשאות מינימליות וב-Actions הרשמיים של GitHub בגרסה ראשית קבועה (למשל `@v4`). אין Secrets ב-Repository ואין צורך ב-Personal Access Token לפריסת Pages באמצעות ההרשאות המובנות.
 - הניקוד ניתן לשינוי דרך Developer Tools; אין מנגנון Anti-cheat, משום שאין שיאים ציבוריים או תוצאות הנשמרות בשרת.
 
 ## 3. Development, Build ו-Deployment
 
-קוד המקור, ההגדרות וה-lockfile ינוהלו ב-Repository אחד ב-GitHub. `main` הוא ענף Production. Pull Requests מריצים בדיקות ללא פרסום, ושינוי ב-`main` מפעיל פריסה אוטומטית באמצעות Pages כשה-Source מוגדר GitHub Actions. אין צורך להחזיק שרת פיתוח קבוע בענן או סביבת נתונים נפרדת.
+קוד המקור, ההגדרות וה-lockfile ינוהלו ב-Repository אחד ב-GitHub. `main` הוא ענף Production והעבודה נדחפת אליו ישירות, ללא Pull Requests. כל Push ל-`main` מפעיל פריסה אוטומטית באמצעות Pages כשה-Source מוגדר GitHub Actions. אין צורך להחזיק שרת פיתוח קבוע בענן או סביבת נתונים נפרדת.
 
 תהליך CI/CD מוגדר כרצף מחייב: `npm ci` → `tsc --noEmit` → `vitest run` → `vite build` → בדיקות Playwright על אותו `dist` → העלאת אותו Artifact באמצעות `upload-pages-artifact` → פרסום באמצעות `deploy-pages`. אין לבצע Build נוסף לאחר הבדיקות. Node.js 24 משמש גם מקומית וגם ב-CI. `vite preview` מתאים לבדיקת התוצר, ואינו שרת Production. [Vite: GitHub Pages deployment](https://vite.dev/guide/static-deploy.html).
 
-לשלב הפרסום נדרשות הרשאות `pages: write`, `id-token: write` וקריאת תוכן, עם Environment בשם `github-pages`. יש לסדר פריסות בקבוצת Concurrency אחת כדי למנוע פרסום גרסאות בסדר הפוך. כשל בדיקות או Build מונע פריסה. Rollback מתבצע בפרסום מחדש של Commit קודם לאחר אותן בדיקות; משתמשים שכבר פועלים עם Cache ימשיכו בגרסה שלהם עד למחזור עדכון ה-Worker.
+לשלב הפרסום נדרשות הרשאות `pages: write`, `id-token: write` וקריאת תוכן, עם Environment בשם `github-pages`. יש לסדר פריסות בקבוצת Concurrency אחת. כשל בדיקות או Build מונע פריסה. חזרה לגרסה קודמת נעשית ב-`git revert` ודחיפה ל-`main`, שמפעילה את אותו תהליך.
 
 התצורה הציבורית כוללת רק Base URL, Manifest וקבועי המשחק: 10 שלבים, 500 מילישניות הארה ו-250 מילישניות הפסקה. אין משתני סביבה סודיים, Database Migrations או פרטי גישה לשירותים חיצוניים.
 
@@ -179,10 +180,10 @@ Node.js פועל בפיתוח וב-CI בלבד. לוגיקת המשחק, הגר�
 | מעבר מסכים | הצגת חוקי המשחק והניקוד באודות, גם ב-Offline; השהיה מאמצע הצגה ומאמצע תשובה; שמירת השלב והניקוד; הצגת אותו רצף ואיפוס התשובה החלקית בחזרה |
 | איפוס | רענון, גם ב-Offline ובכתובת אודות, חוזר לבית עם ניקוד 0; ״משחק חדש״ מתחיל שלב 1 |
 | Offline אמיתי | Build מוגש ב-Base של Project Site; ממתינים ל-Worker ול-Precache, עוברים ל-Offline וטוענים מחדש; בודקים משחק ושני מסכים ללא תלות ברשת |
-| עדכון | פרסום גרסה חדשה בזמן משחק אינו מרענן אותו; לאחר סגירת כל הלקוחות ופתיחה מחדש מתקבלת גרסה עקבית |
-| מובייל וצליל | בדיקות Chromium ו-WebKit ב-Viewport ובמגע של מובייל; בדיקה על מכשירי Android ו-iPhone אמיתיים להתקנה, אודיו, נעילה וחזרה מרקע |
+| הפרעה במובייל | הסתרת הדף בזמן משחק עוצרת את ה-Playback; בחזרה מוצג ״המשך״, ולחיצה עליו מציגה שוב את אותו רצף |
+| מובייל וצליל | בדיקות Chromium באמולציית מובייל; בדיקה ידנית על מכשירי Android ו-iPhone אמיתיים להתקנה, אודיו, נעילה וחזרה מרקע |
 
 בבדיקות Offline יש להשאיר Service Workers פעילים ולהשתמש ב-Browser Context חדש ומבודד לכל תרחיש. אמולציית Playwright אינה מחליפה בדיקת התקנה או שמע במכשיר אמיתי. בדיקות Unit משתמשות במקור Random נשלט וב-Fake Timers, בלי לשנות את ההגרלה ב-Production. [Playwright: Network ו-Service Workers](https://playwright.dev/docs/network), [Playwright: Emulation](https://playwright.dev/docs/emulation).
 
-הארכיטקטורה אינה מוסיפה מסכים, היסטוריה, Backend, Database, שירותי AI או שמירת התקדמות. ההנחה המשלימה היחידה לגבי זרימת משתמש היא שימוש במנגנון ההשהיה הקיים במקרה של הפרעת Lifecycle במובייל, כמפורט לעיל.
+הארכיטקטורה אינה מוסיפה מסכים, היסטוריה, Backend, Database, שירותי AI או שמירת התקדמות. כל זרימות המשתמש, כולל הטיפול בהפרעה במובייל, מוגדרות ב-PRD.
 
