@@ -16,7 +16,7 @@
 
 הפרויקט הוא Frontend בלבד. אין הקמת Backend, Database, Authentication, סביבות Supabase או Database Migrations. Development מתבצע מקומית; Production הוא האתר הסטטי ב-GitHub Pages.
 
-## Milestone 1 — בסיס פרויקט ומסך בית מעוצב
+## Milestone 1 — בסיס פרויקט ומסך בית מעוצב ✅
 
 **מטרה:** להקים בסיס פיתוח ו-Build שחוזר על עצמו, ולהעמיד מסך בית הניתן לפתיחה ולבדיקה חזותית לפני חיבור המשחק.
 

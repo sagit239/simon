@@ -1,0 +1,138 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: var(--font-body);
+  -webkit-text-size-adjust: 100%;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Layout */
+
+.screen {
+  max-width: 480px;
+  margin-inline: auto;
+  min-height: 100dvh;
+  padding-block: env(safe-area-inset-top) calc(var(--space-4) + env(safe-area-inset-bottom));
+  padding-inline: calc(var(--space-2) + env(safe-area-inset-right)) calc(var(--space-2) + env(safe-area-inset-left));
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.header__title {
+  font: var(--font-h1);
+}
+
+/* Buttons */
+
+.btn {
+  min-height: var(--touch-min);
+  min-width: var(--touch-min);
+  padding: 10px var(--space-3);
+  font: var(--font-button);
+  cursor: pointer;
+}
+
+.btn--secondary {
+  background: #fff;
+  border: var(--stroke) solid var(--color-charcoal);
+  border-radius: 10px;
+  color: var(--color-text);
+}
+
+.btn--primary {
+  min-height: 64px;
+  border: none;
+  border-radius: var(--radius-button);
+  color: var(--color-on-dark);
+  font-size: 22px;
+  background: linear-gradient(180deg, #2c2f31 0%, var(--color-charcoal) 55%, #101112 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    var(--shadow-soft);
+}
+
+.btn--wide {
+  width: 100%;
+}
+
+/* Game board */
+
+.board {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.pad {
+  --pad-color: var(--color-blue);
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 5px solid var(--color-charcoal);
+  border-radius: var(--radius-button);
+  color: var(--color-text);
+  font: 700 28px / 1 var(--font-family);
+  cursor: pointer;
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--pad-color), #fff 18%) 0%, var(--pad-color) 45%, color-mix(in srgb, var(--pad-color), #000 14%) 100%);
+  box-shadow:
+    inset 0 0 0 3px color-mix(in srgb, var(--pad-color), #000 22%),
+    inset 0 -6px 10px color-mix(in srgb, var(--pad-color), #000 20%),
+    var(--shadow-soft);
+  transition: filter 80ms ease, box-shadow 80ms ease;
+}
+
+/* Soft glossy highlight in the top corner */
+.pad::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 10px;
+  background: radial-gradient(120% 80% at 15% 0%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 55%);
+  pointer-events: none;
+}
+
+.pad--blue { --pad-color: var(--color-blue); }
+.pad--red { --pad-color: var(--color-red); }
+.pad--yellow { --pad-color: var(--color-yellow); }
+.pad--green { --pad-color: var(--color-green); }
+
+/* Lit state used during playback and press feedback (Milestone 2) */
+.pad.is-active {
+  filter: brightness(1.2) saturate(1.1);
+  box-shadow:
+    inset 0 0 0 3px color-mix(in srgb, var(--pad-color), #fff 30%),
+    0 0 18px 6px color-mix(in srgb, var(--pad-color), transparent 35%),
+    0 0 36px 10px color-mix(in srgb, var(--pad-color), transparent 65%);
+}
+
+.actions {
+  margin-top: var(--space-4);
+}
