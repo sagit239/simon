@@ -133,6 +133,56 @@ button {
     0 0 36px 10px color-mix(in srgb, var(--pad-color), transparent 65%);
 }
 
+/* Input locked (presenting or game over): dim every pad that is not lit */
+.screen[data-phase='presenting'] .pad:not(.is-active),
+.screen[data-phase='won'] .pad:not(.is-active),
+.screen[data-phase='lost'] .pad:not(.is-active) {
+  opacity: 0.6;
+}
+
+.pad[aria-disabled='true'] {
+  cursor: default;
+}
+
+/* Progress counter between the header and the board */
+.status {
+  min-height: 24px;
+  margin-top: var(--space-3);
+  text-align: center;
+  font-weight: 700;
+}
+
+.status + .board {
+  margin-top: var(--space-2);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* Reserves the start button's space so nothing jumps during play */
 .actions {
+  min-height: 64px;
   margin-top: var(--space-4);
+}
+
+.actions__error {
+  margin-bottom: var(--space-2);
+  text-align: center;
+}
+
+.result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  text-align: center;
+}
+
+.result__title {
+  font: var(--font-h2);
+}
+
+.result__score {
+  margin-bottom: var(--space-1);
 }

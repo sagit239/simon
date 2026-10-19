@@ -17,3 +17,15 @@ export const PADS: readonly Pad[] = [
   { color: 'yellow', label: 'צהוב' },
   { color: 'green', label: 'ירוק' },
 ];
+
+// Press feedback length and the pause before the next stage's sequence.
+export const FEEDBACK_MS = 300;
+export const STAGE_PAUSE_MS = 500;
+
+// One fixed, distinct tone per color (classic Simon pitches).
+export const TONE_HZ: Readonly<Record<PadColor, number>> = {
+  green: 415,
+  red: 310,
+  yellow: 252,
+  blue: 209,
+};
