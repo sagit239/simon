@@ -59,4 +59,6 @@
 > Claude ממלא זאת ברגע שהאפליקציה יכולה לרוץ (בדרך כלל בסיום Milestone 1), ומעדכן אם משהו משתנה.
 - **הרצה (dev):** `npm run dev` → http://localhost:5173/simon/
 - **בדיקות (test):** `npm test` (Vitest), `npm run test:e2e` (Playwright על Build)
+- **Build + Preview (כולל Offline):** `npm run build` ואז `npm run preview` → http://localhost:4173/simon/ — ה-Service Worker פועל רק כאן, לא ב-`npm run dev`.
+- **אייקונים:** `npm run icons` (רק אחרי שינוי ב-`public/icon.svg`).
 - הערה: אחרי התקנת Node.js ה-PATH של ה-shell עשוי לא להתעדכן; ב-PowerShell לרענן עם `$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")`.

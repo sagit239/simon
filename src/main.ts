@@ -7,6 +7,7 @@ import './styles/app.css';
 import { createAudio } from './app/audio';
 import { createController, type Controller, type View } from './app/controller';
 import { createNavigation } from './app/navigation';
+import { registerPwa } from './app/pwa';
 import { renderAbout } from './views/about';
 import { renderHome } from './views/home';
 
@@ -34,3 +35,5 @@ if (root) {
     if (document.hidden) controller.pageHidden();
   });
 }
+
+registerPwa();
