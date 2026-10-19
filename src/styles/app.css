@@ -135,6 +135,7 @@ button {
 
 /* Input locked (presenting or game over): dim every pad that is not lit */
 .screen[data-phase='presenting'] .pad:not(.is-active),
+.screen[data-phase='paused'] .pad:not(.is-active),
 .screen[data-phase='won'] .pad:not(.is-active),
 .screen[data-phase='lost'] .pad:not(.is-active) {
   opacity: 0.6;
@@ -185,4 +186,40 @@ button {
 
 .result__score {
   margin-bottom: var(--space-1);
+}
+
+/* About screen */
+
+.about-score {
+  margin-top: var(--space-4);
+  text-align: center;
+}
+
+.about-score__label {
+  font: var(--font-h2);
+}
+
+.about-score__value {
+  font: 700 64px / 72px var(--font-family);
+}
+
+.divider {
+  margin-block: var(--space-3);
+  border: none;
+  border-top: 1px solid var(--color-divider);
+}
+
+.rules__title {
+  margin-bottom: var(--space-2);
+  font: var(--font-h2);
+  text-align: center;
+}
+
+.rules__item {
+  overflow-wrap: break-word;
+  text-align: start;
+}
+
+.rules__item + .rules__item {
+  margin-top: var(--space-1);
 }

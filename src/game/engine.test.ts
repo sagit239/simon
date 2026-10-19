@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { initialState, presentationDone, pressColor, startGame, type GameState } from './engine';
+import {
+  initialState,
+  pause,
+  presentationDone,
+  pressColor,
+  resume,
+  startGame,
+  type GameState,
+} from './engine';
 
 // Cycles through the given values so each stage gets a predictable sequence.
 function cycle(values: number[]) {
@@ -98,5 +106,50 @@ describe('engine', () => {
     const again = pressColor(state, 'blue', () => 0);
     expect(again.outcome).toBe('ignored');
     expect(again.state.score).toBe(1);
+  });
+
+  describe('pause and resume', () => {
+    const random = cycle([0, 0.3, 0.6]);
+    // Stage 3, score 2, sequence blue-red-yellow, one correct press made.
+    const midAnswer = () => {
+      let s = startGame(random);
+      s = answer(s, random).state;
+      s = answer(s, random).state;
+      s = presentationDone(s);
+      return pressColor(s, s.sequence[0]).state;
+    };
+
+    it('pausing mid-answer keeps stage, score and sequence and drops the partial answer', () => {
+      const s = midAnswer();
+      expect(s.inputIndex).toBe(1);
+      const paused = pause(s);
+      expect(paused).toEqual({ ...s, phase: 'paused', inputIndex: 0 });
+    });
+
+    it('pausing mid-presentation keeps the game as it is', () => {
+      const s = startGame(() => 0);
+      expect(pause(s)).toEqual({ ...s, phase: 'paused' });
+    });
+
+    it('does not change idle, won or lost games', () => {
+      const idle = initialState();
+      const lost = pressColor(presentationDone(startGame(() => 0)), 'red').state;
+      expect(pause(idle)).toBe(idle);
+      expect(pause(lost)).toBe(lost);
+      expect(resume(idle)).toBe(idle);
+      expect(resume(lost)).toBe(lost);
+    });
+
+    it('resumes by presenting the same sequence again from the start', () => {
+      const paused = pause(midAnswer());
+      const resumed = resume(paused);
+      expect(resumed).toEqual({ ...paused, phase: 'presenting', inputIndex: 0 });
+      expect(resumed.sequence).toBe(paused.sequence);
+    });
+
+    it('ignores presses while paused', () => {
+      const paused = pause(midAnswer());
+      expect(pressColor(paused, paused.sequence[0])).toEqual({ state: paused, outcome: 'ignored' });
+    });
   });
 });

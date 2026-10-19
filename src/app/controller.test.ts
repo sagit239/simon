@@ -161,3 +161,202 @@ describe('controller', () => {
     expect(model().state.phase).toBe('accepting');
   });
 });
+
+describe('controller: about screen and interruptions', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  // Cycling random: sequences are blue, blue-red, blue-red-yellow, ...
+  function setupVaried() {
+    let model!: ViewModel;
+    const lights: (string | null)[] = [];
+    const audio = {
+      unlock: vi.fn(async () => true),
+      play: vi.fn(),
+      stopAll: vi.fn(),
+    };
+    const values = [0, 0.3, 0.6, 0.9];
+    let i = 0;
+    const controller = createController({
+      view: {
+        update: (m) => {
+          if (!model || m.lit !== model.lit) lights.push(m.lit);
+          model = m;
+        },
+      },
+      audio,
+      random: () => values[i++ % values.length],
+    });
+    return { controller, audio, lights, model: () => model };
+  }
+
+  // Lit colors in order, ignoring "off" entries.
+  const shown = (lights: (string | null)[]) => lights.filter((c) => c !== null);
+
+  // Reaches stage 3 (score 2), waiting for input.
+  async function toStage3(c: ReturnType<typeof setupVaried>) {
+    await c.controller.start();
+    vi.advanceTimersByTime(presentMs(1));
+    c.controller.press('blue');
+    vi.advanceTimersByTime(STAGE_GAP + presentMs(2));
+    c.controller.press('blue');
+    c.controller.press('red');
+    vi.advanceTimersByTime(STAGE_GAP + presentMs(3));
+    expect(c.model().state).toMatchObject({ phase: 'accepting', stage: 3, score: 2 });
+    expect(c.model().state.sequence).toEqual(['blue', 'red', 'yellow']);
+  }
+
+  it('shows score 0 on the about screen before a game, and changes nothing', async () => {
+    const c = setupVaried();
+    c.controller.showScreen('about');
+    expect(c.model()).toMatchObject({ screen: 'about', state: { phase: 'idle', score: 0 } });
+    c.controller.showScreen('home');
+    await vi.runAllTimersAsync();
+    expect(c.model()).toMatchObject({ screen: 'home', state: { phase: 'idle', score: 0 } });
+    expect(c.audio.play).not.toHaveBeenCalled();
+  });
+
+  it('pausing mid-presentation stops lights, tones and callbacks', async () => {
+    const c = setupVaried();
+    await toStage3(c);
+    c.controller.press('blue');
+    c.controller.press('red');
+    c.controller.press('yellow'); // stage 4 starts after the gap
+    vi.advanceTimersByTime(STAGE_GAP + 600); // in the middle of the presentation
+    c.controller.showScreen('about');
+    expect(c.model()).toMatchObject({ screen: 'about', lit: null, state: { phase: 'paused', stage: 4, score: 3 } });
+    const plays = c.audio.play.mock.calls.length;
+    const lightCount = c.lights.length;
+    vi.advanceTimersByTime(60_000);
+    expect(c.audio.play.mock.calls.length).toBe(plays);
+    expect(c.lights.length).toBe(lightCount);
+    expect(c.model().state.phase).toBe('paused');
+  });
+
+  it('pausing mid-answer then returning replays the same full sequence from the start', async () => {
+    const c = setupVaried();
+    await toStage3(c);
+    c.controller.press('blue'); // partial answer
+    c.controller.showScreen('about');
+    expect(c.model().state).toMatchObject({ phase: 'paused', stage: 3, score: 2, inputIndex: 0 });
+
+    c.lights.length = 0;
+    c.controller.showScreen('home');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(c.model().state).toMatchObject({ phase: 'presenting', stage: 3, score: 2 });
+    await vi.advanceTimersByTimeAsync(presentMs(3));
+    expect(shown(c.lights)).toEqual(['blue', 'red', 'yellow']);
+    expect(c.model().state).toMatchObject({ phase: 'accepting', stage: 3, score: 2, inputIndex: 0 });
+    expect(c.model().state.sequence).toEqual(['blue', 'red', 'yellow']);
+
+    // The answer starts over from the first item.
+    c.controller.press('blue');
+    c.controller.press('red');
+    c.controller.press('yellow');
+    expect(c.model().state).toMatchObject({ stage: 4, score: 3 });
+  });
+
+  it('pausing during the gap before the next stage does not start it on its own', async () => {
+    const c = setupVaried();
+    await toStage3(c);
+    c.controller.press('blue');
+    c.controller.press('red');
+    c.controller.press('yellow');
+    c.controller.showScreen('about');
+    vi.advanceTimersByTime(60_000);
+    expect(c.model().state).toMatchObject({ phase: 'paused', stage: 4, score: 3 });
+    c.lights.length = 0;
+    c.controller.showScreen('home');
+    await vi.advanceTimersByTimeAsync(presentMs(4));
+    expect(shown(c.lights)).toEqual(['blue', 'red', 'yellow', 'green']);
+    expect(c.model().state).toMatchObject({ phase: 'accepting', stage: 4, score: 3 });
+  });
+
+  it('rapid back-and-forth leaves a single playback and no stuck light', async () => {
+    const c = setupVaried();
+    await toStage3(c);
+    for (let i = 0; i < 6; i++) {
+      c.controller.showScreen('about');
+      c.controller.showScreen('home');
+    }
+    c.lights.length = 0;
+    c.audio.play.mockClear();
+    await vi.advanceTimersByTimeAsync(presentMs(3) + 60_000);
+    expect(shown(c.lights)).toEqual(['blue', 'red', 'yellow']);
+    expect(c.audio.play).toHaveBeenCalledTimes(3);
+    expect(c.model()).toMatchObject({ lit: null, state: { phase: 'accepting', stage: 3, score: 2 } });
+  });
+
+  it('a visit to about after the game ends keeps the result', async () => {
+    const c = setupVaried();
+    await toStage3(c);
+    c.controller.press('green'); // wrong
+    c.controller.showScreen('about');
+    expect(c.model()).toMatchObject({ screen: 'about', lit: null, state: { phase: 'lost', score: 2 } });
+    c.controller.showScreen('home');
+    await vi.runAllTimersAsync();
+    expect(c.model().state).toMatchObject({ phase: 'lost', score: 2 });
+  });
+
+  it('a pending start is cancelled by going to about', async () => {
+    const c = setupVaried();
+    const pending = c.controller.start();
+    c.controller.showScreen('about');
+    await pending;
+    expect(c.model().state.phase).toBe('idle');
+    c.controller.showScreen('home');
+    await vi.runAllTimersAsync();
+    expect(c.model().state.phase).toBe('idle');
+  });
+
+  it('presses and start are ignored on the about screen', async () => {
+    const c = setupVaried();
+    await toStage3(c);
+    c.controller.showScreen('about');
+    c.controller.press('blue');
+    await c.controller.start();
+    expect(c.model().state).toMatchObject({ phase: 'paused', stage: 3, score: 2 });
+  });
+
+  it('hiding the page pauses on the home screen; continue replays the same sequence', async () => {
+    const c = setupVaried();
+    await toStage3(c);
+    c.controller.press('blue');
+    c.controller.pageHidden();
+    expect(c.model()).toMatchObject({ screen: 'home', lit: null, state: { phase: 'paused', stage: 3, score: 2 } });
+    vi.advanceTimersByTime(60_000);
+    expect(c.model().state.phase).toBe('paused');
+    await c.controller.start(); // "start" is not offered while paused
+    expect(c.model().state.phase).toBe('paused');
+
+    c.lights.length = 0;
+    await c.controller.resume();
+    await vi.advanceTimersByTimeAsync(presentMs(3));
+    expect(shown(c.lights)).toEqual(['blue', 'red', 'yellow']);
+    expect(c.model().state).toMatchObject({ phase: 'accepting', stage: 3, score: 2 });
+  });
+
+  it('hiding the page on the about screen changes nothing', async () => {
+    const c = setupVaried();
+    await toStage3(c);
+    c.controller.showScreen('about');
+    const before = c.model().state;
+    c.controller.pageHidden();
+    expect(c.model()).toMatchObject({ screen: 'about', state: before });
+  });
+
+  it('audio failure on return keeps the game paused until a retry succeeds', async () => {
+    const c = setupVaried();
+    await toStage3(c);
+    c.controller.showScreen('about');
+    c.audio.unlock.mockResolvedValueOnce(false);
+    c.controller.showScreen('home');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(c.model()).toMatchObject({ audioError: true, state: { phase: 'paused', stage: 3, score: 2 } });
+    vi.advanceTimersByTime(60_000);
+    expect(c.model().state.phase).toBe('paused');
+
+    await c.controller.resume();
+    expect(c.model()).toMatchObject({ audioError: false, state: { phase: 'presenting', stage: 3, score: 2 } });
+  });
+});

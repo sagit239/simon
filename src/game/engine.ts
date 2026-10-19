@@ -1,7 +1,7 @@
 import { STAGE_COUNT, type PadColor } from '../config';
 import { generateSequence, type RandomSource } from './sequence';
 
-export type Phase = 'idle' | 'presenting' | 'accepting' | 'won' | 'lost';
+export type Phase = 'idle' | 'presenting' | 'accepting' | 'paused' | 'won' | 'lost';
 
 export interface GameState {
   phase: Phase;
@@ -25,6 +25,23 @@ export function startGame(random?: RandomSource): GameState {
 export function presentationDone(state: GameState): GameState {
   if (state.phase !== 'presenting') return state;
   return { ...state, phase: 'accepting', inputIndex: 0 };
+}
+
+export function isPlaying(state: GameState): boolean {
+  return state.phase === 'presenting' || state.phase === 'accepting';
+}
+
+// Interrupting an active game keeps stage, score and sequence, and drops any
+// partial answer. Other phases are left as they are.
+export function pause(state: GameState): GameState {
+  if (!isPlaying(state)) return state;
+  return { ...state, phase: 'paused', inputIndex: 0 };
+}
+
+// Replays the same sequence from the start: no new draw, no score change.
+export function resume(state: GameState): GameState {
+  if (state.phase !== 'paused') return state;
+  return { ...state, phase: 'presenting', inputIndex: 0 };
 }
 
 export function pressColor(

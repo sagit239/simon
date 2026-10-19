@@ -1,34 +1,17 @@
 import { PADS, type PadColor } from '../config';
 import type { View, ViewModel } from '../app/controller';
-
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className: string,
-  text?: string,
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
-
-function button(className: string, text: string): HTMLButtonElement {
-  const node = el('button', className, text);
-  node.type = 'button';
-  return node;
-}
+import { button, el, header } from './dom';
 
 export interface HomeActions {
   onStart(): void;
+  onResume(): void;
   onPress(color: PadColor): void;
+  onAbout(): void;
 }
 
 // Builds the home screen once; update() reflects each new view model.
 export function renderHome(root: HTMLElement, actions: HomeActions): View {
-  const screen = el('main', 'screen');
-
-  const header = el('header', 'header');
-  header.append(el('h1', 'header__title', 'סיימון'), button('btn btn--secondary', 'אודות'));
+  const screen = el('main', 'screen screen--home');
 
   // Always present so the board does not jump when it fills in.
   const status = el('p', 'status');
@@ -49,6 +32,9 @@ export function renderHome(root: HTMLElement, actions: HomeActions): View {
   error.setAttribute('role', 'alert');
   const startButton = button('btn btn--primary btn--wide', 'התחל');
   startButton.addEventListener('click', actions.onStart);
+  // Shown after an interruption (locked device, app switch, failed audio on return).
+  const resumeButton = button('btn btn--primary btn--wide', 'המשך');
+  resumeButton.addEventListener('click', actions.onResume);
 
   const result = el('section', 'result');
   const resultTitle = el('h2', 'result__title');
@@ -57,17 +43,18 @@ export function renderHome(root: HTMLElement, actions: HomeActions): View {
   newGameButton.addEventListener('click', actions.onStart);
   result.append(resultTitle, resultScore, newGameButton);
 
-  actionsArea.append(error, startButton, result);
-  screen.append(header, status, board, actionsArea);
+  actionsArea.append(error, startButton, resumeButton, result);
+  screen.append(header('סיימון', 'אודות', actions.onAbout), status, board, actionsArea);
   root.replaceChildren(screen);
 
-  function update({ state, lit, audioError }: ViewModel): void {
+  function update({ state, screen: current, lit, audioError }: ViewModel): void {
     const { phase, stage, score } = state;
-    const playing = phase === 'presenting' || phase === 'accepting';
+    const inGame = phase === 'presenting' || phase === 'accepting' || phase === 'paused';
     const over = phase === 'won' || phase === 'lost';
 
+    screen.hidden = current !== 'home';
     screen.dataset.phase = phase;
-    status.textContent = playing ? `שלב ${stage} · ניקוד ${score}` : '';
+    status.textContent = inGame ? `שלב ${stage} · ניקוד ${score}` : '';
 
     for (const [color, node] of pads) {
       node.classList.toggle('is-active', color === lit);
@@ -75,7 +62,8 @@ export function renderHome(root: HTMLElement, actions: HomeActions): View {
     }
 
     startButton.hidden = phase !== 'idle';
-    error.hidden = !(phase === 'idle' && audioError);
+    resumeButton.hidden = phase !== 'paused';
+    error.hidden = !((phase === 'idle' || phase === 'paused') && audioError);
     result.hidden = !over;
     if (over) {
       resultTitle.textContent = phase === 'won' ? 'ניצחון!' : 'המשחק נגמר';

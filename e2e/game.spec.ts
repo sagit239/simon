@@ -17,7 +17,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-const screen = (page: Page) => page.locator('.screen');
+const screen = (page: Page) => page.locator('.screen--home');
 const pad = (page: Page, label: string) => page.getByRole('button', { name: label, exact: true });
 const status = (page: Page) => page.locator('.status');
 
