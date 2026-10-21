@@ -229,3 +229,8 @@ Node.js פועל בפיתוח וב-CI בלבד. לוגיקת המשחק, הגר�
 **הקשר:** צריך לדעת מתי האתר באמת מוכן לעבוד בלי רשת, בלי להוסיף ממשק שה-PRD וה-DESIGN אינם מגדירים.
 **החלטה:** הרישום נמצא ב-`src/app/pwa.ts` (`registerType: 'prompt'`, בלי טיפול ב-`onNeedRefresh`). הדף מסומן כמוכן (`data-offline-ready="true"` על `<html>`, לא נראה למשתמש) רק כש-Worker הותקן עם ה-Precache המלא: מ-`onOfflineReady` בביקור הראשון, או כשכבר קיים Worker פעיל מביקור קודם. ה-Precache כולל HTML, JS, CSS, גופני `woff2` בלבד (דפדפנים מודרניים אינם טוענים `woff`), אייקונים ו-Manifest. `skipWaiting` ו-`clientsClaim` נשארים כבויים, ולכן הדף הראשון אינו נשלט על ידי ה-Worker עד הטעינה הבאה.
 **השלכות:** אין חיווי Offline במסך. בדיקות הדפדפן ממתינות לסימון ולטעינה מחדש לפני ניתוק הרשת. ה-Worker כבוי ב-`npm run dev` ופועל רק ב-Build / Preview.
+
+### ADR-9: Playwright ב-CI מגיש את ה-`dist` הקיים
+**הקשר:** הגדרת Playwright הריצה `npm run build && npm run preview`, ולכן ב-CI היא הייתה בונה את האתר פעם שנייה, אחרי שלב ה-`vite build`. הארכיטקטורה דורשת שהתוצר שנבדק יהיה בדיוק זה שמתפרסם.
+**החלטה:** כשמשתנה הסביבה `CI` מוגדר (ב-Workflow), שרת הבדיקות מריץ רק `npm run preview` על ה-`dist` שכבר נבנה. מקומית נשאר Build + Preview. כדי לא להוסיף טיפוסי Node לכל הפרויקט, `process` מוצהר מקומית בקובץ ההגדרות בלבד. ה-Workflow משתמש ב-Actions הרשמיים בגרסאות הראשיות העדכניות (`checkout@v7`, `setup-node@v7`, `upload-pages-artifact@v5`, `deploy-pages@v5`).
+**השלכות:** ה-Artifact שעולה ל-Pages הוא אותו `dist` שעבר את בדיקות הדפדפן. `test.only` שנשכח בקוד מכשיל את ה-CI (`forbidOnly`).
